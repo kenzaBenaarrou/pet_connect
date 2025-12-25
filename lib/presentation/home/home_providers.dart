@@ -1,8 +1,10 @@
+import 'dart:developer';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pet_con/data/models/pet_profile.dart';
-import 'package:pet_con/data/services/firebase_service.dart';
+import 'package:pet_con/data/repositories/pet_api_repository.dart';
+import 'package:pet_con/data/repositories/match_api_repository.dart';
 import 'package:pet_con/core/constants/app_constants.dart';
 
 // Discovery Settings
@@ -70,9 +72,15 @@ class DiscoveryState {
 // Discovery Notifier
 class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
   final DiscoverySettings settings;
-  DocumentSnapshot? _lastDocument;
+  final PetApiRepository _petApiRepository;
+  final MatchApiRepository _matchApiRepository;
+  int? _lastPetId;
 
-  DiscoveryNotifier(this.settings) : super(const DiscoveryState()) {
+  DiscoveryNotifier(
+    this.settings,
+    this._petApiRepository,
+    this._matchApiRepository,
+  ) : super(const DiscoveryState()) {
     _loadInitialPets();
   }
 
@@ -81,12 +89,14 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
 
     try {
       final pets = await _fetchPets();
+      log('Loaded initial pets: ${pets.first.toJson()}');
       state = state.copyWith(
         pets: pets,
         isLoading: false,
         hasMore: pets.length == 10, // Assuming 10 is our page size
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      log('Error loading initial pets: $e', stackTrace: stackTrace);
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),
@@ -98,7 +108,7 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
     if (state.isLoading || !state.hasMore) return;
 
     try {
-      final morePets = await _fetchPets(startAfter: _lastDocument);
+      final morePets = await _fetchPets(lastPetId: _lastPetId);
       state = state.copyWith(
         pets: [...state.pets, ...morePets],
         hasMore: morePets.length == 10,
@@ -109,59 +119,35 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
     }
   }
 
-  Future<List<PetProfile>> _fetchPets({DocumentSnapshot? startAfter}) async {
-    final currentUserId = FirebaseService.currentUserId;
-    if (currentUserId == null) {
-      throw Exception('User not authenticated');
-    }
-
-    // Get current user location (simplified)
-    // In a real app, you'd get this from user profile or current location
+  Future<List<PetProfile>> _fetchPets({int? lastPetId}) async {
     try {
+      // Get current user location
       await Geolocator.getCurrentPosition();
     } catch (e) {
       throw Exception('Failed to get location: $e');
     }
 
-    // Build query
-    Query query = FirebaseService.petsCollection
-        .where('ownerId', isNotEqualTo: currentUserId) // Exclude own pets
-        .limit(10);
+    // Fetch pets from NestJS API with filters
+    final pets = await _petApiRepository.getDiscoveryPets(
+      limit: 10,
+      minAge: settings.minAge > 0 ? settings.minAge : null,
+      maxAge: settings.maxAge < 240 ? settings.maxAge : null,
+      sizes: settings.petSizes.length < AppConstants.petSizes.length
+          ? settings.petSizes
+          : null,
+      distance: settings.distance,
+      lastPetId: lastPetId,
+    );
 
-    // Add filters based on discovery settings
-    if (settings.minAge > 0) {
-      query = query.where('age', isGreaterThanOrEqualTo: settings.minAge);
-    }
-    if (settings.maxAge < 240) {
-      query = query.where('age', isLessThanOrEqualTo: settings.maxAge);
-    }
-    if (settings.petSizes.length < AppConstants.petSizes.length) {
-      query = query.where('size', whereIn: settings.petSizes);
-    }
-
-    // Exclude already swiped pets
-    if (state.swipedPetIds.isNotEmpty) {
-      query = query.where(FieldPath.documentId,
-          whereNotIn: state.swipedPetIds.take(10).toList());
+    if (pets.isNotEmpty) {
+      _lastPetId = pets.last.id;
     }
 
-    if (startAfter != null) {
-      query = query.startAfterDocument(startAfter);
-    }
+    // Filter out already swiped pets
+    final filteredPets =
+        pets.where((pet) => !state.swipedPetIds.contains(pet.id)).toList();
 
-    final snapshot = await query.get();
-    if (snapshot.docs.isNotEmpty) {
-      _lastDocument = snapshot.docs.last;
-    }
-
-    // Convert to PetProfile objects
-    final pets =
-        snapshot.docs.map((doc) => PetProfile.fromFirestore(doc)).toList();
-
-    // TODO: Filter by distance using geoPoint
-    // This would require implementing proper geo-queries
-
-    return pets;
+    return filteredPets;
   }
 
   Future<void> likePet(String petId) async {
@@ -171,14 +157,13 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
         swipedPetIds: {...state.swipedPetIds, petId},
       );
 
-      // Record the swipe in Firestore
+      // Record the swipe via NestJS API
       await _recordSwipe(petId, SwipeAction.like);
 
       // Check for match
-      final match = await _checkForMatch(petId);
-      if (match != null) {
-        // Handle match - could trigger a callback or event
-        _handleMatch(match);
+      final matchId = await _checkForMatch(petId);
+      if (matchId != null) {
+        _handleMatch(matchId);
       }
     } catch (e) {
       print('Error liking pet: $e');
@@ -192,7 +177,7 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
         swipedPetIds: {...state.swipedPetIds, petId},
       );
 
-      // Record the swipe in Firestore
+      // Record the swipe via NestJS API
       await _recordSwipe(petId, SwipeAction.pass);
     } catch (e) {
       print('Error passing pet: $e');
@@ -206,14 +191,13 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
         swipedPetIds: {...state.swipedPetIds, petId},
       );
 
-      // Record the swipe in Firestore
+      // Record the swipe via NestJS API
       await _recordSwipe(petId, SwipeAction.superLike);
 
       // Super likes could have special handling
-      // For now, treat as regular like
-      final match = await _checkForMatch(petId);
-      if (match != null) {
-        _handleMatch(match);
+      final matchId = await _checkForMatch(petId);
+      if (matchId != null) {
+        _handleMatch(matchId);
       }
     } catch (e) {
       print('Error super liking pet: $e');
@@ -221,59 +205,21 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
   }
 
   Future<void> _recordSwipe(String petId, SwipeAction action) async {
-    final currentUserId = FirebaseService.currentUserId;
-    if (currentUserId == null) return;
-
-    await FirebaseService.swipesCollection.add({
-      'swiperId': currentUserId,
-      'targetPetId': petId,
-      'action': action.name,
-      'timestamp': DateTime.now(),
-    });
+    // Record swipe via NestJS API (you'll need to implement this endpoint)
+    // For now, we'll just track locally
+    // await _matchApiRepository.recordSwipe(petId, action.name);
   }
 
   Future<String?> _checkForMatch(String likedPetId) async {
-    final currentUserId = FirebaseService.currentUserId;
-    if (currentUserId == null) return null;
-
-    // Get the liked pet's owner
-    final petDoc = await FirebaseService.petsCollection.doc(likedPetId).get();
-    if (!petDoc.exists) return null;
-
-    final petData = petDoc.data() as Map<String, dynamic>?;
-    if (petData == null) return null;
-
-    final likedPetOwnerId = petData['ownerId'] as String;
-
-    // Get current user's pets
-    final userPetsSnapshot = await FirebaseService.petsCollection
-        .where('ownerId', isEqualTo: currentUserId)
-        .get();
-
-    // Check if the other user liked any of our pets
-    for (final userPetDoc in userPetsSnapshot.docs) {
-      final swipeSnapshot = await FirebaseService.swipesCollection
-          .where('swiperId', isEqualTo: likedPetOwnerId)
-          .where('targetPetId', isEqualTo: userPetDoc.id)
-          .where('action', isEqualTo: SwipeAction.like.name)
-          .get();
-
-      if (swipeSnapshot.docs.isNotEmpty) {
-        // It's a match! Create match document
-        final matchDoc = await FirebaseService.matchesCollection.add({
-          'petIdA': userPetDoc.id,
-          'petIdB': likedPetId,
-          'ownerIdA': currentUserId,
-          'ownerIdB': likedPetOwnerId,
-          'createdAt': DateTime.now(),
-          'isActive': true,
-        });
-
-        return matchDoc.id;
-      }
+    try {
+      // Check for match via NestJS API
+      // final match = await _matchApiRepository.checkMatch(likedPetId);
+      // return match?.id;
+      return null; // Implement when backend endpoint is ready
+    } catch (e) {
+      print('Error checking for match: $e');
+      return null;
     }
-
-    return null;
   }
 
   void _handleMatch(String matchId) {
@@ -284,7 +230,7 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
 
   void refresh() {
     state = const DiscoveryState();
-    _lastDocument = null;
+    _lastPetId = null;
     _loadInitialPets();
   }
 }
@@ -299,5 +245,7 @@ final discoverySettingsProvider = StateProvider<DiscoverySettings>((ref) {
 final discoveryProvider =
     StateNotifierProvider<DiscoveryNotifier, DiscoveryState>((ref) {
   final settings = ref.watch(discoverySettingsProvider);
-  return DiscoveryNotifier(settings);
+  final petApiRepository = PetApiRepository();
+  final matchApiRepository = MatchApiRepository();
+  return DiscoveryNotifier(settings, petApiRepository, matchApiRepository);
 });

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:pet_con/core/theme/app_theme.dart';
 import 'package:pet_con/firebase_options.dart';
 import 'package:pet_con/presentation/auth/auth_wrapper.dart';
@@ -14,12 +16,16 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Load environment variables FIRST
+  await dotenv.load(fileName: ".env");
+  log('✅ Environment variables loaded');
+
   // Initialize Firebase FIRST
   await _initializeFirebase();
 
   // Initialize Firebase Service AFTER Firebase is initialized
   await FirebaseService.initialize();
-
+  await Permission.location.request();
   runApp(
     const ProviderScope(
       child: PetConnectApp(),

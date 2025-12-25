@@ -223,7 +223,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               onPressed: () {
                 ref.read(discoveryProvider.notifier).refresh();
               },
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(
+                Icons.refresh,
+                color: AppColors.primaryWhite,
+              ),
               label: const Text('Refresh'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryBlue,

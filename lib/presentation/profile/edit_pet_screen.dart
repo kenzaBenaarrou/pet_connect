@@ -7,12 +7,14 @@ import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pet_con/core/constants/app_constants.dart';
+import 'package:pet_con/data/models/pet_profile.dart';
 import 'package:pet_con/presentation/auth/auth_providers.dart';
-import 'package:pet_con/data/services/image_upload_service.dart';
+import 'package:pet_con/data/repositories/pet_api_repository.dart';
+import 'package:pet_con/data/providers/pet_providers.dart';
 
 class EditPetScreen extends ConsumerStatefulWidget {
   final String petId;
-  final Map<String, dynamic> petData;
+  final PetProfile petData;
 
   const EditPetScreen({
     super.key,
@@ -56,21 +58,19 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
   }
 
   void _initializeControllers() {
-    _nameController = TextEditingController(text: widget.petData['name'] ?? '');
-    _breedController =
-        TextEditingController(text: widget.petData['breed'] ?? '');
-    _bioController = TextEditingController(text: widget.petData['bio'] ?? '');
+    _nameController = TextEditingController(text: widget.petData.name ?? '');
+    _breedController = TextEditingController(text: widget.petData.breed ?? '');
+    _bioController = TextEditingController(text: widget.petData.bio ?? '');
 
-    _selectedAge = widget.petData['age'] ?? 6;
-    _selectedSize = widget.petData['size'] ?? 'Medium';
+    _selectedAge = widget.petData.age ?? 6;
+    _selectedSize = widget.petData.size ?? 'Medium';
     _selectedTemperaments =
-        List<String>.from(widget.petData['temperament'] ?? ['Friendly']);
-    _isVaccinated = widget.petData['vaccinated'] ?? true;
-    _isFixed = widget.petData['fixed'] ?? false;
-    
+        List<String>.from(widget.petData.temperament ?? ['Friendly']);
+    _isVaccinated = widget.petData.vaccinated ?? true;
+    _isFixed = widget.petData.fixed ?? false;
     // Try photoUrls first, then fallback to images for backward compatibility
-    final photoUrls = widget.petData['photoUrls'] as List<dynamic>?;
-    final images = widget.petData['images'] as List<dynamic>?;
+    final photoUrls = widget.petData.images as List<dynamic>?;
+    final images = widget.petData.images as List<dynamic>?;
     _existingImages = List<String>.from(photoUrls ?? images ?? []);
   }
 
@@ -258,88 +258,39 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
         debugPrint('Failed to get location: $e');
       }
 
-      // Upload new images to Firebase Storage if any
-      List<String> allImageUrls = [..._existingImages];
-      
-      if (_newImages.isNotEmpty) {
-        try {
-          // Show upload progress in snackbar
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  SizedBox(
-                    width: 20.w,
-                    height: 20.h,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        AppColors.primaryWhite,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 12.w),
-                  Text('Uploading ${_newImages.length} image${_newImages.length > 1 ? 's' : ''}...'),
-                ],
-              ),
-              backgroundColor: AppColors.primaryPink,
-              duration: const Duration(seconds: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-            ),
-          );
+      // Combine existing URLs with new local file paths
+      List<String> allImages = [..._existingImages];
 
-          // Upload new images to Firebase Storage
-          final newImageUrls = await ImageUploadService.uploadPetImages(
-            petId: widget.petId,
-            imageFiles: _newImages,
-            onProgress: (progress) {
-              debugPrint('Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
-            },
-          );
-          
-          allImageUrls.addAll(newImageUrls);
-          debugPrint('Successfully uploaded ${newImageUrls.length} new images');
-          
-        } catch (uploadError) {
-          debugPrint('Error uploading images: $uploadError');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to upload images: ${uploadError.toString()}'),
-                backgroundColor: AppColors.error,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-              ),
-            );
-          }
-          // Continue with existing images only
-        }
+      // Add new images as file paths (will be uploaded by API)
+      if (_newImages.isNotEmpty) {
+        allImages.addAll(_newImages.map((file) => file.path).toList());
       }
 
-      // Update pet profile in Firestore
-      await FirebaseFirestore.instance
-          .collection('pets')
-          .doc(widget.petId)
-          .update({
-        'name': _nameController.text.trim(),
-        'breed': _breedController.text.trim(),
-        'age': _selectedAge,
-        'size': _selectedSize,
-        'temperament': _selectedTemperaments,
-        'vaccinated': _isVaccinated,
-        'fixed': _isFixed,
-        'bio': _bioController.text.trim(),
-        'photoUrls': allImageUrls,
-        'images': allImageUrls, // Keep for backward compatibility
-        if (position != null)
-          'geoPoint': GeoPoint(position.latitude, position.longitude),
-        'updatedAt': Timestamp.now(),
-      });
+      // Update pet profile via NestJS API
+      final updatedPet = PetProfile(
+        id: int.parse(widget.petId),
+        name: _nameController.text.trim(),
+        breed: _breedController.text.trim(),
+        age: _selectedAge,
+        size: _selectedSize,
+        temperament: _selectedTemperaments,
+        vaccinated: _isVaccinated,
+        fixed: _isFixed,
+        bio: _bioController.text.trim(),
+        images: allImages,
+        geoPoint: position != null
+            ? GeoPoint(position.latitude, position.longitude)
+            : widget.petData.geoPoint,
+      );
+
+      final petRepo = PetApiRepository();
+      await petRepo.updatePet(updatedPet);
 
       if (mounted) {
+        // Invalidate providers to refresh data
+        ref.invalidate(myPetsProvider);
+        ref.invalidate(petDataProvider(int.parse(widget.petId)));
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -383,7 +334,7 @@ class _EditPetScreenState extends ConsumerState<EditPetScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Edit ${widget.petData['name'] ?? 'Pet'}'),
+        title: Text('Edit ${widget.petData.name ?? 'Pet'}'),
         backgroundColor: AppColors.primaryWhite,
         foregroundColor: AppColors.primaryBlue,
         elevation: 0,

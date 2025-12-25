@@ -419,20 +419,61 @@ class _PetSetupScreenState extends ConsumerState<PetSetupScreen> {
 
     if (source != null) {
       try {
-        final XFile? image = await picker.pickImage(
-          source: source,
-          maxWidth: 800,
-          maxHeight: 800,
-          imageQuality: 85,
-        );
+        if (source == ImageSource.camera) {
+          // Camera can only pick one image at a time
+          final XFile? image = await picker.pickImage(
+            source: source,
+            maxWidth: 800,
+            maxHeight: 800,
+            imageQuality: 85,
+          );
 
-        if (image != null) {
-          // Add the local file path to the pet images
-          final newImages = [
-            ...currentImages,
-            image.path,
-          ];
-          ref.read(onboardingProvider.notifier).setPetImages(newImages);
+          if (image != null) {
+            final newImages = [
+              ...currentImages,
+              image.path,
+            ];
+            ref.read(onboardingProvider.notifier).setPetImages(newImages);
+          }
+        } else {
+          // Gallery can pick multiple images
+          final List<XFile> images = await picker.pickMultiImage(
+            maxWidth: 800,
+            maxHeight: 800,
+            imageQuality: 85,
+          );
+
+          if (images.isNotEmpty) {
+            // Check if adding these images would exceed the limit
+            final totalImages = currentImages.length + images.length;
+            if (totalImages > AppConstants.maxPetImages) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        'Can only add ${AppConstants.maxPetImages - currentImages.length} more photo(s)'),
+                    backgroundColor: AppColors.warning,
+                  ),
+                );
+              }
+              // Only add images up to the limit
+              final remainingSlots =
+                  AppConstants.maxPetImages - currentImages.length;
+              final imagesToAdd = images.take(remainingSlots).toList();
+              final newImages = [
+                ...currentImages,
+                ...imagesToAdd.map((img) => img.path),
+              ];
+              ref.read(onboardingProvider.notifier).setPetImages(newImages);
+            } else {
+              // Add all selected images
+              final newImages = [
+                ...currentImages,
+                ...images.map((img) => img.path),
+              ];
+              ref.read(onboardingProvider.notifier).setPetImages(newImages);
+            }
+          }
         }
       } catch (e) {
         if (mounted) {

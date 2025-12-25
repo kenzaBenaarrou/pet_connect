@@ -19,7 +19,7 @@ final ownerProfileProvider = FutureProvider.autoDispose((ref) async {
   if (currentUser == null) return null;
 
   final ownerRepository = ref.read(ownerRepositoryProvider);
-  return ownerRepository.getOwnerProfile(currentUser.uid);
+  return ownerRepository.getOwnerProfile(currentUser.firebaseUid!);
 });
 
 class ProfileScreen extends ConsumerWidget {
@@ -76,14 +76,14 @@ class ProfileScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(
                             47.r), // Slightly smaller to account for border
                         child: _buildProfileImage(
-                          ownerProfile?.profilePicture ?? currentUser?.photoURL,
+                          ownerProfile?.profilePicture ?? currentUser?.photo,
                         ),
                       ),
                     ),
                     SizedBox(height: 16.h),
                     Text(
                       ownerProfile?.name ??
-                          currentUser?.displayName ??
+                          '${currentUser?.firstname ?? ''} ${currentUser?.lastname ?? ''}' ??
                           'Pet Owner',
                       style:
                           Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -265,7 +265,7 @@ class ProfileScreen extends ConsumerWidget {
         imageUrl,
         fit: BoxFit.cover,
         width: 100.w,
-        height: 100.h,
+        height: 120.h,
         errorBuilder: (context, error, stackTrace) {
           return Container(
             color: AppColors.backgroundLight,

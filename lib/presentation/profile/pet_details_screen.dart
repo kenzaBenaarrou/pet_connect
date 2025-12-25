@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pet_con/core/constants/app_constants.dart';
+import 'package:pet_con/data/models/pet_profile.dart';
 import 'package:pet_con/presentation/profile/edit_pet_screen.dart';
+import 'package:pet_con/data/providers/pet_providers.dart';
+import 'package:pet_con/data/repositories/pet_api_repository.dart';
 
 class PetDetailsScreen extends ConsumerWidget {
   final String petId;
@@ -18,26 +20,13 @@ class PetDetailsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final petAsync = ref.watch(petDataProvider(int.parse(petId)));
+
     return Scaffold(
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('pets')
-            .doc(petId)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildLoadingState(context);
-          }
-
-          if (snapshot.hasError ||
-              !snapshot.hasData ||
-              !snapshot.data!.exists) {
-            return _buildErrorState(context);
-          }
-
-          final petData = snapshot.data!.data() as Map<String, dynamic>;
-          return _buildPetDetails(context, petData);
-        },
+      body: petAsync.when(
+        loading: () => _buildLoadingState(context),
+        error: (error, stack) => _buildErrorState(context),
+        data: (pet) => _buildPetDetails(context, pet),
       ),
     );
   }
@@ -114,21 +103,16 @@ class PetDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPetDetails(BuildContext context, Map<String, dynamic> petData) {
-    // Try photoUrls first, then fallback to images for backward compatibility
-    final photoUrls = petData['photoUrls'] as List<dynamic>?;
-    final images = petData['images'] as List<dynamic>?;
-    final List<String> imageUrls = List<String>.from(photoUrls ?? images ?? []);
-    
-    final String name = petData['name'] ?? 'Unknown';
-    final String breed = petData['breed'] ?? 'Unknown';
-    final int age = petData['age'] ?? 0;
-    final String size = petData['size'] ?? 'Unknown';
-    final List<String> temperament =
-        List<String>.from(petData['temperament'] ?? []);
-    final bool vaccinated = petData['vaccinated'] ?? false;
-    final bool fixed = petData['fixed'] ?? false;
-    final String bio = petData['bio'] ?? '';
+  Widget _buildPetDetails(BuildContext context, PetProfile pet) {
+    final List<String> imageUrls = pet.images ?? [];
+    final String name = pet.name ?? 'Unknown';
+    final String breed = pet.breed ?? 'Unknown';
+    final int age = pet.age ?? 0;
+    final String size = pet.size ?? 'Unknown';
+    final List<String> temperament = pet.temperament ?? [];
+    final bool vaccinated = pet.vaccinated ?? false;
+    final bool fixed = pet.fixed ?? false;
+    final String bio = pet.bio ?? '';
 
     return CustomScrollView(
       slivers: [
@@ -204,7 +188,7 @@ class PetDetailsScreen extends ConsumerWidget {
                   ],
 
                   // Action Buttons
-                  _buildActionButtons(context, petData),
+                  _buildActionButtons(context, pet),
                   SizedBox(height: 32.h),
                 ],
               ),
@@ -260,7 +244,8 @@ class PetDetailsScreen extends ConsumerWidget {
             final imageUrl = images[index];
 
             // Check if it's a network URL or local path
-            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+            if (imageUrl.startsWith('http://') ||
+                imageUrl.startsWith('https://')) {
               return CachedNetworkImage(
                 imageUrl: imageUrl,
                 fit: BoxFit.cover,
@@ -659,8 +644,7 @@ class PetDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionButtons(
-      BuildContext context, Map<String, dynamic> petData) {
+  Widget _buildActionButtons(BuildContext context, PetProfile pet) {
     return Column(
       children: [
         // Edit Pet Button
@@ -692,7 +676,7 @@ class PetDetailsScreen extends ConsumerWidget {
                 MaterialPageRoute(
                   builder: (context) => EditPetScreen(
                     petId: petId,
-                    petData: petData,
+                    petData: pet,
                   ),
                 ),
               );
@@ -815,7 +799,8 @@ class PetDetailsScreen extends ConsumerWidget {
 
   void _deletePet(BuildContext context) async {
     try {
-      await FirebaseFirestore.instance.collection('pets').doc(petId).delete();
+      final petRepo = PetApiRepository();
+      await petRepo.deletePet(petId);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

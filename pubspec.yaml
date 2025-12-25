@@ -43,6 +43,9 @@ dependencies:
   uuid: ^4.2.1
   intl: ^0.19.0
   permission_handler: ^11.1.0
+  http: ^1.1.0
+  flutter_dotenv: ^5.1.0
+  flutter_secure_storage: ^9.0.0
   
   # Icons
   cupertino_icons: ^1.0.8
@@ -67,3 +70,4 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/animations/
+    - .env

@@ -6,39 +6,40 @@ part 'pet_profile.g.dart';
 
 @JsonSerializable()
 class PetProfile {
-  final String id;
-  final String ownerId;
-  final String name;
-  final int age; // in months
-  final String breed;
-  final String size; // Small, Medium, Large, Extra Large
-  final List<String> temperament;
-  final bool vaccinated;
-  final bool fixed;
+  final int? id;
+  final int? ownerId;
+  final String? name;
+  final int? age; // in months
+  final String? breed;
+  final String? size; // Small, Medium, Large, Extra Large
+  final List<String>? temperament;
+  final bool? vaccinated;
+  final bool? fixed;
   final String? bio;
-  final List<String> images;
+  @ImageListConverter()
+  final List<String>? images;
   @GeoPointConverter()
   final GeoPoint? geoPoint;
   @DateTimeConverter()
-  final DateTime createdAt;
+  final DateTime? createdAt;
   @DateTimeConverter()
-  final DateTime updatedAt;
+  final DateTime? updatedAt;
 
   const PetProfile({
-    required this.id,
-    required this.ownerId,
-    required this.name,
-    required this.age,
-    required this.breed,
-    required this.size,
-    required this.temperament,
-    required this.vaccinated,
-    required this.fixed,
+    this.id,
+    this.ownerId,
+    this.name,
+    this.age,
+    this.breed,
+    this.size,
+    this.temperament,
+    this.vaccinated,
+    this.fixed,
     this.bio,
-    required this.images,
+    this.images,
     this.geoPoint,
-    required this.createdAt,
-    required this.updatedAt,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory PetProfile.fromJson(Map<String, dynamic> json) =>
@@ -62,11 +63,11 @@ class PetProfile {
 
   // Computed properties
   String get ageText {
-    if (age < 12) {
+    if (age! < 12) {
       return '$age months';
     } else {
-      final years = age ~/ 12;
-      final months = age % 12;
+      final years = age! ~/ 12;
+      final months = age! % 12;
       if (months == 0) {
         return '$years ${years == 1 ? 'year' : 'years'}';
       } else {
@@ -75,11 +76,12 @@ class PetProfile {
     }
   }
 
-  String get primaryImage => images.isNotEmpty ? images.first : '';
+  String get primaryImage =>
+      images != null && images!.isNotEmpty ? images!.first : '';
 
   PetProfile copyWith({
-    String? id,
-    String? ownerId,
+    int? id,
+    int? ownerId,
     String? name,
     int? age,
     String? breed,

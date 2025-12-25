@@ -114,10 +114,10 @@ class PetRepository {
 
   Future<void> updatePet(PetProfile pet) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('pets')
-          .doc(pet.id)
-          .update(pet.toFirestore());
+      // await FirebaseFirestore.instance
+      //     .collection('pets')
+      //     .doc(pet.id)
+      //     .update(pet.toFirestore());
     } catch (e) {
       throw Exception('Failed to update pet: $e');
     }

@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "288500183974",
+    "firebase_url": "https://petconnect-8e37d-default-rtdb.firebaseio.com",
     "project_id": "petconnect-8e37d",
     "storage_bucket": "petconnect-8e37d.firebasestorage.app"
   },

@@ -49,6 +49,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '288500183974',
     projectId: 'petconnect-8e37d',
     authDomain: 'petconnect-8e37d.firebaseapp.com',
+    databaseURL: 'https://petconnect-8e37d-default-rtdb.firebaseio.com',
     storageBucket: 'petconnect-8e37d.firebasestorage.app',
   );
 
@@ -57,8 +58,8 @@ class DefaultFirebaseOptions {
     appId: '1:288500183974:android:46671a1fbfb5b9f9e9d567',
     messagingSenderId: '288500183974',
     projectId: 'petconnect-8e37d',
+    databaseURL: 'https://petconnect-8e37d-default-rtdb.firebaseio.com',
     storageBucket: 'petconnect-8e37d.firebasestorage.app',
-    databaseURL: 'https://petconnect-8e37d-default-rtdb.firebaseio.com/',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -66,6 +67,7 @@ class DefaultFirebaseOptions {
     appId: '1:288500183974:ios:f2f5679cf43e94efe9d567',
     messagingSenderId: '288500183974',
     projectId: 'petconnect-8e37d',
+    databaseURL: 'https://petconnect-8e37d-default-rtdb.firebaseio.com',
     storageBucket: 'petconnect-8e37d.firebasestorage.app',
     iosBundleId: 'com.example.petCon',
   );
@@ -76,6 +78,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '288500183974',
     projectId: 'petconnect-8e37d',
     authDomain: 'petconnect-8e37d.firebaseapp.com',
+    databaseURL: 'https://petconnect-8e37d-default-rtdb.firebaseio.com',
     storageBucket: 'petconnect-8e37d.firebasestorage.app',
   );
+
 }

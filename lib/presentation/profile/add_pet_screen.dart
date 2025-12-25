@@ -249,7 +249,8 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
                     ),
                   ),
                   SizedBox(width: 12.w),
-                  Text('Uploading ${_selectedImages.length} image${_selectedImages.length > 1 ? 's' : ''}...'),
+                  Text(
+                      'Uploading ${_selectedImages.length} image${_selectedImages.length > 1 ? 's' : ''}...'),
                 ],
               ),
               backgroundColor: AppColors.primaryPink,
@@ -264,17 +265,19 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
             petId: petId,
             imageFiles: _selectedImages,
             onProgress: (progress) {
-              debugPrint('Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
+              debugPrint(
+                  'Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
             },
           );
-          
+
           debugPrint('Successfully uploaded ${imageUrls.length} images');
         } catch (uploadError) {
           debugPrint('Error uploading images: $uploadError');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Failed to upload images: ${uploadError.toString()}'),
+                content:
+                    Text('Failed to upload images: ${uploadError.toString()}'),
                 backgroundColor: AppColors.error,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12.r),
@@ -289,7 +292,7 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
       // Save to Firestore with both photoUrls and images for compatibility
       await FirebaseFirestore.instance.collection('pets').doc(petId).set({
         'id': petId,
-        'ownerId': currentUser.uid,
+        'ownerId': currentUser.id,
         'name': _nameController.text.trim(),
         'age': _selectedAge,
         'breed': _breedController.text.trim(),

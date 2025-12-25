@@ -8,6 +8,7 @@ import 'package:pet_con/presentation/widgets/custom_button.dart';
 import 'package:pet_con/presentation/widgets/custom_text_field.dart';
 import 'package:pet_con/presentation/onboarding/pet_setup_screen.dart';
 import 'package:pet_con/presentation/onboarding/onboarding_providers.dart';
+import 'package:pet_con/data/services/secure_storage_service.dart';
 
 class OwnerSetupScreen extends ConsumerStatefulWidget {
   const OwnerSetupScreen({super.key});
@@ -18,14 +19,30 @@ class OwnerSetupScreen extends ConsumerStatefulWidget {
 
 class _OwnerSetupScreenState extends ConsumerState<OwnerSetupScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  final _firstnameController = TextEditingController();
+  final _lastnameController = TextEditingController();
+
   final _bioController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  @override
   void dispose() {
-    _nameController.dispose();
+    _firstnameController.dispose();
+    _lastnameController.dispose();
     _bioController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadUserName() async {
+    _firstnameController.text =
+        (await SecureStorageService.getUserFirstname()) ?? "";
+    _lastnameController.text =
+        (await SecureStorageService.getUserLastname()) ?? "";
   }
 
   @override
@@ -106,22 +123,33 @@ class _OwnerSetupScreenState extends ConsumerState<OwnerSetupScreen> {
 
                 // Name Field
                 CustomTextField(
-                  controller: _nameController,
-                  label: 'Your Name',
+                  controller: _firstnameController,
+                  label: 'Your First Name',
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your name';
+                      return 'Please enter your first name';
                     }
                     return null;
                   },
                 ),
-
+                SizedBox(height: 20.h),
+                // Last Field
+                CustomTextField(
+                  controller: _lastnameController,
+                  label: 'Your Last Name',
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your last name';
+                    }
+                    return null;
+                  },
+                ),
                 SizedBox(height: 20.h),
 
                 // Bio Field
                 CustomTextField(
                   controller: _bioController,
-                  label: 'About You (Optional)',
+                  label: 'About You',
                   hint: 'Tell other pet owners about yourself...',
                   maxLines: 4,
                   maxLength: 300,
@@ -413,7 +441,8 @@ class _OwnerSetupScreenState extends ConsumerState<OwnerSetupScreen> {
 
     // Save owner data
     ref.read(onboardingProvider.notifier).setOwnerData(
-          name: _nameController.text.trim(),
+          firstname: _firstnameController.text.trim(),
+          lastname: _lastnameController.text.trim(),
           bio: _bioController.text.trim().isEmpty
               ? null
               : _bioController.text.trim(),

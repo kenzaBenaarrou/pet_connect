@@ -11,8 +11,7 @@ OwnerProfile _$OwnerProfileFromJson(Map<String, dynamic> json) => OwnerProfile(
       name: json['name'] as String,
       profilePicture: json['profilePicture'] as String?,
       bio: json['bio'] as String?,
-      location: const GeoPointConverter()
-          .fromJson(json['location'] as Map<String, dynamic>?),
+      location: const GeoPointConverter().fromJson(json['location']),
       petIds:
           (json['petIds'] as List<dynamic>).map((e) => e as String).toList(),
       createdAt:

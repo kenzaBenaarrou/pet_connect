@@ -67,7 +67,8 @@ class _PetCardState extends State<PetCard> {
               ),
 
               // Image Indicators
-              if (widget.pet.images.length > 1) _buildImageIndicators(),
+              if (widget.pet.images != null && widget.pet.images!.length > 1)
+                _buildImageIndicators(),
 
               // Pet Information
               Positioned(
@@ -91,13 +92,13 @@ class _PetCardState extends State<PetCard> {
   }
 
   Widget _buildImageCarousel() {
-    if (widget.pet.images.isEmpty) {
+    if (widget.pet.images == null || widget.pet.images!.isEmpty) {
       return Container(
         color: AppColors.backgroundLight,
         child: Center(
           child: Icon(
             Icons.pets,
-            size: 100.w,
+            size: 120.w,
             color: AppColors.textLight,
           ),
         ),
@@ -106,7 +107,7 @@ class _PetCardState extends State<PetCard> {
 
     return PageView.builder(
       controller: _pageController,
-      itemCount: widget.pet.images.length,
+      itemCount: widget.pet.images!.length,
       onPageChanged: (index) {
         setState(() {
           _currentImageIndex = index;
@@ -114,7 +115,7 @@ class _PetCardState extends State<PetCard> {
       },
       itemBuilder: (context, index) {
         return CachedNetworkImage(
-          imageUrl: widget.pet.images[index],
+          imageUrl: widget.pet.images![index],
           fit: BoxFit.cover,
           width: double.infinity,
           placeholder: (context, url) => Container(
@@ -148,7 +149,7 @@ class _PetCardState extends State<PetCard> {
       left: 16.w,
       right: 60.w, // Leave space for health icons
       child: Row(
-        children: widget.pet.images.asMap().entries.map((entry) {
+        children: widget.pet.images!.asMap().entries.map((entry) {
           final index = entry.key;
           return Container(
             width: 8.w,
@@ -169,7 +170,7 @@ class _PetCardState extends State<PetCard> {
   Widget _buildHealthIcons() {
     return Column(
       children: [
-        if (widget.pet.vaccinated)
+        if (widget.pet.vaccinated!)
           Container(
             padding: EdgeInsets.all(8.w),
             margin: EdgeInsets.only(bottom: 8.h),
@@ -183,7 +184,7 @@ class _PetCardState extends State<PetCard> {
               size: 16.w,
             ),
           ),
-        if (widget.pet.fixed)
+        if (widget.pet.fixed!)
           Container(
             padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
@@ -212,7 +213,7 @@ class _PetCardState extends State<PetCard> {
             children: [
               Expanded(
                 child: Text(
-                  widget.pet.name,
+                  widget.pet.name!,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         color: AppColors.primaryWhite,
                         fontWeight: FontWeight.bold,
@@ -264,11 +265,11 @@ class _PetCardState extends State<PetCard> {
           SizedBox(height: 12.h),
 
           // Temperament Tags
-          if (widget.pet.temperament.isNotEmpty) ...[
+          if (widget.pet.temperament!.isNotEmpty) ...[
             Wrap(
               spacing: 6.w,
               runSpacing: 6.h,
-              children: widget.pet.temperament.take(3).map((temperament) {
+              children: widget.pet.temperament!.take(3).map((temperament) {
                 return Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: 8.w,

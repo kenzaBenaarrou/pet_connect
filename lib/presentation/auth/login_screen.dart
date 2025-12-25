@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -15,6 +17,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _firstnameController = TextEditingController();
+  final _lastnameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isSignUp = false;
@@ -77,6 +81,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
+                    _isSignUp
+                        ? Column(
+                            children: [
+                              CustomTextField(
+                                controller: _firstnameController,
+                                label: "First Name",
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your first name';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: 16.h),
+                              CustomTextField(
+                                controller: _lastnameController,
+                                label: "Last Name",
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your last name';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: 16.h),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
                     CustomTextField(
                       controller: _emailController,
                       label: AppStrings.email,
@@ -217,6 +249,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       if (_isSignUp) {
         await ref.read(authProvider.notifier).signUpWithEmail(
+              _firstnameController.text.trim(),
+              _lastnameController.text.trim(),
               _emailController.text.trim(),
               _passwordController.text,
             );
@@ -226,10 +260,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               _passwordController.text,
             );
       }
-    } catch (e) {
+    } catch (e, stacktrace) {
+      log('Email auth error: $e\n$stacktrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
+            duration: Duration(seconds: 50),
             content: Text(e.toString()),
             backgroundColor: AppColors.error,
           ),

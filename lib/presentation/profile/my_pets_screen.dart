@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pet_con/core/constants/app_constants.dart';
 import 'package:pet_con/presentation/auth/auth_providers.dart';
 import 'package:pet_con/presentation/profile/add_pet_screen.dart';
 import 'package:pet_con/presentation/profile/pet_details_screen.dart';
+import 'package:pet_con/data/providers/pet_providers.dart';
 
 class MyPetsScreen extends ConsumerWidget {
   const MyPetsScreen({super.key});
@@ -14,6 +14,7 @@ class MyPetsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(currentUserProvider);
+    final petsAsync = ref.watch(myPetsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -26,82 +27,72 @@ class MyPetsScreen extends ConsumerWidget {
           ? const Center(
               child: Text('Please log in to view your pets'),
             )
-          : StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('pets')
-                  .where('ownerId', isEqualTo: currentUser.uid)
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(20.w),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.primaryPink.withOpacity(0.1),
-                                AppColors.primaryBlue.withOpacity(0.1),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(20.r),
+          : petsAsync.when(
+              loading: () {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(20.w),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppColors.primaryPink.withOpacity(0.1),
+                              AppColors.primaryBlue.withOpacity(0.1),
+                            ],
                           ),
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppColors.primaryPink,
-                            ),
-                            strokeWidth: 3,
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.primaryPink,
                           ),
+                          strokeWidth: 3,
                         ),
-                        SizedBox(height: 16.h),
-                        Text(
-                          'Loading your pets...',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: AppColors.textSecondary,
-                                  ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64.w,
-                          color: AppColors.error,
-                        ),
-                        SizedBox(height: 16.h),
-                        Text(
-                          'Error loading pets',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        SizedBox(height: 8.h),
-                        Text(
-                          snapshot.error.toString(),
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppColors.textSecondary,
-                                  ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final pets = snapshot.data?.docs ?? [];
-
+                      ),
+                      SizedBox(height: 16.h),
+                      Text(
+                        'Loading your pets...',
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              error: (error, stack) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 64.w,
+                        color: AppColors.error,
+                      ),
+                      SizedBox(height: 16.h),
+                      Text(
+                        'Error loading pets',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      SizedBox(height: 8.h),
+                      Text(
+                        error.toString(),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                );
+              },
+              data: (pets) {
                 if (pets.isEmpty) {
                   return Center(
                     child: Column(
@@ -192,20 +183,14 @@ class MyPetsScreen extends ConsumerWidget {
                   padding: EdgeInsets.all(AppDimensions.paddingM.w),
                   itemCount: pets.length,
                   itemBuilder: (context, index) {
-                    final petDoc = pets[index];
-                    final petData = petDoc.data() as Map<String, dynamic>;
-
-                    // Try photoUrls first, then fallback to images for backward compatibility
-                    final photoUrls = petData['photoUrls'] as List<dynamic>?;
-                    final images = petData['images'] as List<dynamic>?;
-                    final imageList = List<String>.from(photoUrls ?? images ?? []);
+                    final pet = pets[index];
 
                     return _PetListItem(
-                      petId: petDoc.id,
-                      name: petData['name'] ?? 'Unknown',
-                      breed: petData['breed'] ?? 'Unknown',
-                      age: petData['age'] ?? 0,
-                      images: imageList,
+                      petId: pet.id.toString(),
+                      name: pet.name ?? 'Unknown',
+                      breed: pet.breed ?? 'Unknown',
+                      age: pet.age ?? 0,
+                      images: pet.images ?? [],
                     );
                   },
                 );
@@ -573,7 +558,8 @@ class _PetListItemState extends State<_PetListItem>
               height: 20.h,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryPink),
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(AppColors.primaryPink),
               ),
             ),
           ),
