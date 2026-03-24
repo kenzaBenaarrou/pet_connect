@@ -115,7 +115,7 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
       );
     } catch (e) {
       // Handle error silently for pagination
-      print('Error loading more pets: $e');
+    print('Error loading more pets: $e');
     }
   }
 

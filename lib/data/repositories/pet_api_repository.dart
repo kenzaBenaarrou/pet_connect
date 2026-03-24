@@ -1,7 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart';
 import '../services/api_service.dart';
 import '../models/pet_profile.dart';
 
@@ -119,7 +118,7 @@ class PetApiRepository {
         fields: fields,
       );
 
-      log("response:${response}");
+      log("response:$response");
       return PetProfile.fromJson(response);
     } else {
       // No local files, send as JSON

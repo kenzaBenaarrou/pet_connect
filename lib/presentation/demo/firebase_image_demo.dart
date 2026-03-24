@@ -4,7 +4,7 @@ import 'package:pet_con/core/constants/app_constants.dart';
 
 /// Demo widget to show how Firebase Storage URLs work with CachedNetworkImage
 class FirebaseImageDemo extends StatelessWidget {
-  FirebaseImageDemo({super.key});
+  const FirebaseImageDemo({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +28,6 @@ class FirebaseImageDemo extends StatelessWidget {
               ),
             ),
             SizedBox(height: 16.h),
-            
             Text(
               'Features Implemented:',
               style: TextStyle(
@@ -38,17 +37,15 @@ class FirebaseImageDemo extends StatelessWidget {
               ),
             ),
             SizedBox(height: 8.h),
-            
             _buildFeatureItem('✅ Multi-image upload to Firebase Storage'),
-            _buildFeatureItem('✅ Unique folder structure: pets/{userId}/{petId}/'),
+            _buildFeatureItem(
+                '✅ Unique folder structure: pets/{userId}/{petId}/'),
             _buildFeatureItem('✅ Download URLs stored in Firestore'),
             _buildFeatureItem('✅ CachedNetworkImage for efficient loading'),
             _buildFeatureItem('✅ Upload progress tracking'),
             _buildFeatureItem('✅ Error handling and offline support'),
             _buildFeatureItem('✅ Backward compatibility with existing data'),
-            
             SizedBox(height: 24.h),
-            
             Text(
               'How it works:',
               style: TextStyle(
@@ -58,14 +55,14 @@ class FirebaseImageDemo extends StatelessWidget {
               ),
             ),
             SizedBox(height: 8.h),
-            
-            _buildStepItem('1. User selects multiple images', Icons.photo_library),
-            _buildStepItem('2. Images upload to Firebase Storage', Icons.cloud_upload),
-            _buildStepItem('3. Download URLs saved to Firestore', Icons.storage),
+            _buildStepItem(
+                '1. User selects multiple images', Icons.photo_library),
+            _buildStepItem(
+                '2. Images upload to Firebase Storage', Icons.cloud_upload),
+            _buildStepItem(
+                '3. Download URLs saved to Firestore', Icons.storage),
             _buildStepItem('4. Images display with caching', Icons.image),
-            
             SizedBox(height: 24.h),
-            
             Text(
               'Sample Firebase Storage URL Structure:',
               style: TextStyle(
@@ -75,13 +72,13 @@ class FirebaseImageDemo extends StatelessWidget {
               ),
             ),
             SizedBox(height: 8.h),
-            
             Container(
               padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
                 color: AppColors.backgroundLight.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(color: AppColors.primaryPink.withOpacity(0.3)),
+                border:
+                    Border.all(color: AppColors.primaryPink.withOpacity(0.3)),
               ),
               child: Text(
                 'pets/{userId}/{petId}/{timestamp}_0.jpg',
