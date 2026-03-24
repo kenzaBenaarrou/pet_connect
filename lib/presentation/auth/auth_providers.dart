@@ -157,7 +157,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final result = await FirebaseService.signInWithGoogle();
 
       if (result?.user != null) {
-        // TODO: Send Google user info to NestJS to create/link account
         // For now, create a basic UserModel with placeholder data
         final firebaseUser = result!.user!;
         final displayName = firebaseUser.displayName ?? 'User';
